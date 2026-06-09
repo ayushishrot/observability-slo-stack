@@ -5,7 +5,7 @@
 [![Loki](https://img.shields.io/badge/Loki-F5A800?style=for-the-badge&logo=grafana&logoColor=white)](https://grafana.com/oss/loki/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge)](LICENSE)
 
-A drop-in **observability stack** — Prometheus, Grafana, Loki and **Grafana Alloy** —
+A drop-in **observability stack**  Prometheus, Grafana, Loki and **Grafana Alloy** 
 plus **SLO/SLI** recording rules, **multi-window multi-burn-rate** error-budget alerts,
 and ready-made Grafana dashboards. Run it locally with `docker compose up` or deploy the
 same rules to Kubernetes.
