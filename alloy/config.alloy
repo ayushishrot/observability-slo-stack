@@ -1,0 +1,50 @@
+// Grafana Alloy: collect local logs, label them, and push to Loki.
+
+local.file_match "system" {
+  path_targets = [
+    { __path__ = "/var/log/*.log", job = "varlogs", host = sys.env("HOSTNAME") },
+  ]
+}
+
+loki.source.file "system" {
+  targets    = local.file_match.system.targets
+  forward_to = [loki.process.add_labels.receiver]
+}
+
+// Drop noisy debug lines and add a structured "level" label.
+loki.process "add_labels" {
+  forward_to = [loki.write.default.receiver]
+
+  stage.regex {
+    expression = "(?P<level>INFO|WARN|ERROR|DEBUG)"
+  }
+
+  stage.labels {
+    values = { level = "" }
+  }
+
+  stage.drop {
+    expression = ".*level=DEBUG.*"
+  }
+}
+
+loki.write "default" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+  external_labels = { cluster = "local", environment = "dev" }
+}
+
+// Scrape Alloy's own metrics so collector health is observable too.
+prometheus.exporter.self "alloy" {}
+
+prometheus.scrape "alloy" {
+  targets    = prometheus.exporter.self.alloy.targets
+  forward_to = [prometheus.remote_write.default.receiver]
+}
+
+prometheus.remote_write "default" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
+  }
+}

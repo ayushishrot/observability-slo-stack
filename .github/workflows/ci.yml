@@ -1,0 +1,42 @@
+name: observability-ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  promtool:
+    name: promtool check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install promtool
+        run: |
+          VERSION=2.53.0
+          curl -sSL "https://github.com/prometheus/prometheus/releases/download/v${VERSION}/prometheus-${VERSION}.linux-amd64.tar.gz" \
+            | tar xz
+          sudo mv "prometheus-${VERSION}.linux-amd64/promtool" /usr/local/bin/
+
+      - name: Check rules
+        run: promtool check rules prometheus/rules/*.yml
+
+      - name: Check scrape config
+        run: promtool check config prometheus/prometheus.yml
+
+  jsonlint:
+    name: dashboards valid json
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate dashboard JSON
+        run: |
+          for f in grafana/dashboards/*.json; do
+            echo "Checking $f"
+            python3 -c "import json,sys; json.load(open('$f'))"
+          done

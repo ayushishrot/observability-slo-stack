@@ -1,0 +1,40 @@
+# Same SLO rules as a Prometheus Operator CRD for Kubernetes deployments.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: slo-rules
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+    role: slo-rules
+spec:
+  groups:
+    - name: sli-recording
+      interval: 30s
+      rules:
+        - record: service:sli_availability:ratio_rate5m
+          expr: |
+            1 - (
+              sum by (service) (rate(http_requests_total{code=~"5.."}[5m]))
+              /
+              sum by (service) (rate(http_requests_total[5m]))
+            )
+        - record: service:sli_availability:ratio_rate1h
+          expr: |
+            1 - (
+              sum by (service) (rate(http_requests_total{code=~"5.."}[1h]))
+              /
+              sum by (service) (rate(http_requests_total[1h]))
+            )
+    - name: slo-burn
+      rules:
+        - alert: ErrorBudgetBurnFast
+          expr: |
+            (1 - service:sli_availability:ratio_rate1h) > (14.4 * (1 - 0.999))
+            and
+            (1 - service:sli_availability:ratio_rate5m) > (14.4 * (1 - 0.999))
+          for: 2m
+          labels:
+            severity: page
+          annotations:
+            summary: "Fast error-budget burn on {{ $labels.service }}"
