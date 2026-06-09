@@ -1,0 +1,47 @@
+groups:
+  - name: slo-error-budget-burn
+    rules:
+      # Fast burn: 2% of a 30d budget in 1h (burn rate 14.4) -> page.
+      - alert: ErrorBudgetBurnFast
+        expr: |
+          (
+            (1 - service:sli_availability:ratio_rate1h)  > (14.4 * (1 - 0.999))
+            and
+            (1 - service:sli_availability:ratio_rate5m)  > (14.4 * (1 - 0.999))
+          )
+        for: 2m
+        labels:
+          severity: page
+          window: 1h5m
+        annotations:
+          summary: "Fast error-budget burn on {{ $labels.service }}"
+          description: "{{ $labels.service }} is burning its 30d error budget 14.4x faster than allowed (1h & 5m windows)."
+          runbook: "https://github.com/ayushishrot/sre-runbooks-incident-toolkit/blob/main/runbooks/high-error-rate.md"
+
+      # Slower burn: 5% in 6h (burn rate 6) -> page.
+      - alert: ErrorBudgetBurnMedium
+        expr: |
+          (
+            (1 - service:sli_availability:ratio_rate6h)  > (6 * (1 - 0.999))
+            and
+            (1 - service:sli_availability:ratio_rate30m) > (6 * (1 - 0.999))
+          )
+        for: 5m
+        labels:
+          severity: page
+          window: 6h30m
+        annotations:
+          summary: "Sustained error-budget burn on {{ $labels.service }}"
+          description: "{{ $labels.service }} is burning its error budget 6x faster than allowed (6h & 30m windows)."
+
+      # Slow burn: 10% in 24h (burn rate 3) -> ticket.
+      - alert: ErrorBudgetBurnSlow
+        expr: |
+          (1 - service:sli_availability:ratio_rate6h) > (3 * (1 - 0.999))
+        for: 1h
+        labels:
+          severity: ticket
+          window: 24h
+        annotations:
+          summary: "Slow error-budget burn on {{ $labels.service }}"
+          description: "{{ $labels.service }} will exhaust its 30d budget if this rate continues. Open a tracking ticket."

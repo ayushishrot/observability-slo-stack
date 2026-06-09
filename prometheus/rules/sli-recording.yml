@@ -1,0 +1,57 @@
+groups:
+  - name: sli-recording
+    interval: 30s
+    rules:
+      # Per-service request rate
+      - record: service:http_requests:rate5m
+        expr: sum by (service) (rate(http_requests_total[5m]))
+
+      # Per-service error rate (5xx)
+      - record: service:http_errors:rate5m
+        expr: sum by (service) (rate(http_requests_total{code=~"5.."}[5m]))
+
+      # Availability SLI = good / total, computed over several windows
+      - record: service:sli_availability:ratio_rate5m
+        expr: |
+          1 - (
+            sum by (service) (rate(http_requests_total{code=~"5.."}[5m]))
+            /
+            sum by (service) (rate(http_requests_total[5m]))
+          )
+
+      - record: service:sli_availability:ratio_rate30m
+        expr: |
+          1 - (
+            sum by (service) (rate(http_requests_total{code=~"5.."}[30m]))
+            /
+            sum by (service) (rate(http_requests_total[30m]))
+          )
+
+      - record: service:sli_availability:ratio_rate1h
+        expr: |
+          1 - (
+            sum by (service) (rate(http_requests_total{code=~"5.."}[1h]))
+            /
+            sum by (service) (rate(http_requests_total[1h]))
+          )
+
+      - record: service:sli_availability:ratio_rate6h
+        expr: |
+          1 - (
+            sum by (service) (rate(http_requests_total{code=~"5.."}[6h]))
+            /
+            sum by (service) (rate(http_requests_total[6h]))
+          )
+
+      # Latency SLI: fraction of requests faster than 300ms
+      - record: service:sli_latency:ratio_rate5m
+        expr: |
+          sum by (service) (rate(http_request_duration_seconds_bucket{le="0.3"}[5m]))
+          /
+          sum by (service) (rate(http_request_duration_seconds_count[5m]))
+
+  - name: slo-targets
+    rules:
+      # SLO target per service (99.9% availability). Adjust per service via labels.
+      - record: service:slo_target:availability
+        expr: vector(0.999)

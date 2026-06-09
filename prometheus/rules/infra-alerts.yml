@@ -1,0 +1,51 @@
+groups:
+  - name: infra-alerts
+    rules:
+      - alert: InstanceDown
+        expr: up == 0
+        for: 5m
+        labels:
+          severity: page
+        annotations:
+          summary: "Target {{ $labels.instance }} down"
+          description: "{{ $labels.job }} target {{ $labels.instance }} has been unreachable for 5m."
+
+      - alert: HighNodeCPU
+        expr: |
+          100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU on {{ $labels.instance }}"
+          description: "CPU usage above 90% for 10m."
+
+      - alert: HighNodeMemory
+        expr: |
+          (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory on {{ $labels.instance }}"
+          description: "Memory usage above 90% for 10m."
+
+      - alert: PodCrashLooping
+        expr: |
+          increase(kube_pod_container_status_restarts_total[15m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} crash-looping"
+          description: "Container has restarted more than 3 times in 15m."
+
+      - alert: KafkaConsumerLagHigh
+        expr: |
+          sum by (consumergroup, topic) (kafka_consumergroup_lag) > 10000
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Kafka consumer lag high ({{ $labels.consumergroup }})"
+          description: "Consumer group {{ $labels.consumergroup }} lag on {{ $labels.topic }} exceeds 10k messages."
